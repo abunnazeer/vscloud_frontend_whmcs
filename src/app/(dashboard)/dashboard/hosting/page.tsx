@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { CheckIcon } from "@heroicons/react/20/solid";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const billingOptions = [
   { id: "monthly", name: "Monthly", multiplier: 1 },
@@ -73,11 +74,18 @@ export default function HostingPlansPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Hosting Plans</h1>
-        <p className="mt-2 text-sm text-gray-700">
-          Choose the perfect hosting plan for your needs
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Hosting Plans
+          </h1>
+          <p className="mt-2 text-sm text-gray-700">
+            Choose the perfect hosting plan for your needs
+          </p>
+        </div>
+        <Link href="/dashboard/my-hosting">
+          <Button variant="outline">View My Hosting</Button>
+        </Link>
       </div>
 
       {/* Billing Interval Toggle */}

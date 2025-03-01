@@ -10,10 +10,12 @@ import {
   TrashIcon,
   PencilIcon,
   ArrowPathIcon,
+  CubeIcon,
 } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import ServerFormModal from "@/components/admin/ServerFormModal";
 import DeleteConfirmationModal from "@/components/admin/DeleteConfirmationModal";
+import Link from "next/link";
 
 interface HostingServer {
   id: string;
@@ -146,6 +148,12 @@ export default function HostingPage() {
             <PlusIcon className="mr-2 h-5 w-5" />
             Add Server
           </Button>
+          <Link href="/admin/packages">
+            <Button variant="outline">
+              <CubeIcon className="mr-2 h-5 w-5" />
+              Manage Packages
+            </Button>
+          </Link>
         </div>
 
         {/* Servers List */}

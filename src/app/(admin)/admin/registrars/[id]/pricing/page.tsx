@@ -1,66 +1,74 @@
 // src/app/(admin)/admin/registrars/[id]/pricing/page.tsx
 "use client";
-
-import { useState } from "react";
+import React, { useState } from "react";
+import TLDPricingFormModal from "@/components/admin/TLDPricingFormModal";
 import {
+  PlusIcon,
+  PencilIcon,
+  TrashIcon,
   ArrowPathIcon,
   ArrowUpIcon,
   ArrowDownIcon,
-  PencilIcon,
 } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 interface TLDPricing {
+  id: string;
   tld: string;
-  register: {
-    cost: number;
-    price: number;
-    margin: number;
-  };
-  renew: {
-    cost: number;
-    price: number;
-    margin: number;
-  };
-  transfer: {
-    cost: number;
-    price: number;
-    margin: number;
-  };
+  monthlyPrice: number;
+  quarterlyPrice: number;
+  annualPrice: number;
+  registrarCost: number;
+  margin: number;
+  status: "active" | "inactive";
+  registrarId: string;
   minYears: number;
   maxYears: number;
   featured: boolean;
 }
 
-const mockPricing: TLDPricing[] = [
+const mockTldPricing: TLDPricing[] = [
   {
+    id: "1",
     tld: ".com",
-    register: { cost: 8.99, price: 12.99, margin: 44.49 },
-    renew: { cost: 8.99, price: 13.99, margin: 55.62 },
-    transfer: { cost: 8.99, price: 11.99, margin: 33.37 },
+    monthlyPrice: 12.99,
+    quarterlyPrice: 35.99,
+    annualPrice: 129.99,
+    registrarCost: 8.99,
+    margin: 44.49,
+    status: "active",
+    registrarId: "1",
     minYears: 1,
     maxYears: 10,
     featured: true,
   },
   {
+    id: "2",
     tld: ".net",
-    register: { cost: 9.99, price: 13.99, margin: 40.04 },
-    renew: { cost: 9.99, price: 14.99, margin: 50.05 },
-    transfer: { cost: 9.99, price: 12.99, margin: 30.03 },
+    monthlyPrice: 10.99,
+    quarterlyPrice: 29.99,
+    annualPrice: 109.99,
+    registrarCost: 7.99,
+    margin: 37.55,
+    status: "active",
+    registrarId: "1",
     minYears: 1,
     maxYears: 10,
-    featured: true,
+    featured: false,
   },
 ];
 
-export default function TLDPricingPage({ params }: { params: { id: string } }) {
-  const [pricing, setPricing] = useState<TLDPricing[]>(mockPricing);
-  const [sortField, setSortField] = useState<string>("tld");
+export default function TLDPricingManagement() {
+  const [tldPricing, setTldPricing] = useState<TLDPricing[]>(mockTldPricing);
+  const [sortField, setSortField] = useState<keyof TLDPricing>("tld");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [filter, setFilter] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTLD, setSelectedTLD] = useState<TLDPricing | null>(null);
 
-  const handleSort = (field: string) => {
+  const handleSort = (field: keyof TLDPricing) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -81,53 +89,117 @@ export default function TLDPricingPage({ params }: { params: { id: string } }) {
   };
 
   const getSortedAndFilteredPricing = () => {
-    let filtered = pricing;
+    let filtered = tldPricing;
 
     if (filter) {
-      filtered = pricing.filter(p =>
+      filtered = tldPricing.filter(p =>
         p.tld.toLowerCase().includes(filter.toLowerCase())
       );
     }
 
     return filtered.sort((a, b) => {
-      let aValue = a[sortField as keyof TLDPricing];
-      let bValue = b[sortField as keyof TLDPricing];
+      const aValue = a[sortField];
+      const bValue = b[sortField];
 
-      if (typeof aValue === "object") {
-        aValue = (aValue as any).price;
-        bValue = (bValue as any).price;
+      if (typeof aValue === "number" && typeof bValue === "number") {
+        return sortDirection === "asc" ? aValue - bValue : bValue - aValue;
       }
 
-      if (sortDirection === "asc") {
-        return aValue > bValue ? 1 : -1;
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        return sortDirection === "asc"
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
       }
-      return aValue < bValue ? 1 : -1;
+
+      return 0;
     });
+  };
+
+  const handleSyncPricing = async () => {
+    setIsLoading(true);
+    try {
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } catch (error) {
+      console.error("Failed to sync pricing:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOpenModal = (tld: TLDPricing | null = null) => {
+    setSelectedTLD(tld);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedTLD(null);
+  };
+
+  const handleSubmitPricing = async (data: TLDPricing) => {
+    try {
+      if (selectedTLD) {
+        // Update existing TLD pricing
+        const updatedPricing = tldPricing.map(tld =>
+          tld.id === selectedTLD.id ? { ...tld, ...data } : tld
+        );
+        setTldPricing(updatedPricing);
+      } else {
+        // Add new TLD pricing
+        const newTLD = {
+          id: String(Date.now()),
+          ...data,
+        };
+        setTldPricing([...tldPricing, newTLD]);
+      }
+      handleCloseModal();
+    } catch (error) {
+      console.error("Error saving TLD pricing:", error);
+    }
   };
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">TLD Pricing</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">
+          TLD Pricing Management
+        </h1>
         <p className="mt-2 text-sm text-gray-700">
-          Manage domain pricing for all TLDs
+          Configure and manage domain pricing for all TLDs
         </p>
       </div>
 
-      <div className="flex justify-between">
-        <div className="w-64">
+      {/* Actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex space-x-4">
           <Input
+            type="text"
             placeholder="Filter TLDs..."
             value={filter}
             onChange={e => setFilter(e.target.value)}
+            className="w-64"
           />
+          <select className="rounded-lg border border-gray-300 px-4 py-2 focus:border-blue-500 focus:outline-none">
+            <option value="all">All Registrars</option>
+            <option value="namecheap">Namecheap</option>
+            <option value="resellerclub">ResellerClub</option>
+          </select>
         </div>
-        <Button>
-          <ArrowPathIcon className="mr-2 h-5 w-5" />
-          Sync Pricing
-        </Button>
+        <div className="flex space-x-4">
+          <Button onClick={handleSyncPricing} disabled={isLoading}>
+            <ArrowPathIcon className="mr-2 h-5 w-5" />
+            {isLoading ? "Syncing..." : "Sync Pricing"}
+          </Button>
+          <Button onClick={() => handleOpenModal()}>
+            <PlusIcon className="mr-2 h-5 w-5" />
+            Add TLD Pricing
+          </Button>
+        </div>
       </div>
 
+      {/* Pricing Table */}
       <div className="rounded-lg bg-white shadow">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -148,13 +220,16 @@ export default function TLDPricingPage({ params }: { params: { id: string } }) {
                   </button>
                 </th>
                 <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Register
+                  Monthly
                 </th>
                 <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Renew
+                  Quarterly
                 </th>
                 <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Transfer
+                  Annual
+                </th>
+                <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Cost & Margin
                 </th>
                 <th className="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Duration
@@ -164,53 +239,80 @@ export default function TLDPricingPage({ params }: { params: { id: string } }) {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {getSortedAndFilteredPricing().map(tld => (
-                <tr key={tld.tld}>
+                <tr key={tld.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <span className="text-sm font-medium text-gray-900">
-                        {tld.tld}
-                      </span>
-                      {tld.featured && (
-                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          Featured
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                        <span className="text-sm font-semibold text-blue-600">
+                          {tld.tld}
                         </span>
-                      )}
+                      </div>
+                      <div className="ml-4">
+                        <div className="flex items-center">
+                          <span className="text-sm font-medium text-gray-900">
+                            {tld.tld}
+                          </span>
+                          {tld.featured && (
+                            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              Featured
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            tld.status === "active"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {tld.status}
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {formatCurrency(tld.register.price)}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Cost: {formatCurrency(tld.register.cost)} | Margin:{" "}
-                      {formatPercentage(tld.register.margin)}
+                      {formatCurrency(tld.monthlyPrice)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {formatCurrency(tld.renew.price)}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      Cost: {formatCurrency(tld.renew.cost)} | Margin:{" "}
-                      {formatPercentage(tld.renew.margin)}
+                      {formatCurrency(tld.quarterlyPrice)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {formatCurrency(tld.transfer.price)}
+                      {formatCurrency(tld.annualPrice)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      Cost: {formatCurrency(tld.registrarCost)}
                     </div>
                     <div className="text-xs text-gray-500">
-                      Cost: {formatCurrency(tld.transfer.cost)} | Margin:{" "}
-                      {formatPercentage(tld.transfer.margin)}
+                      Margin: {formatPercentage(tld.margin)}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {tld.minYears} - {tld.maxYears} years
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Button variant="outline" size="sm">
-                      <PencilIcon className="h-4 w-4" />
-                    </Button>
+                    <div className="flex space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenModal(tld)}
+                      >
+                        <PencilIcon className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -218,6 +320,18 @@ export default function TLDPricingPage({ params }: { params: { id: string } }) {
           </table>
         </div>
       </div>
+
+      {/* Modal */}
+      <TLDPricingFormModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmitPricing}
+        initialData={selectedTLD}
+        registrars={[
+          { id: "1", name: "Namecheap" },
+          { id: "2", name: "ResellerClub" },
+        ]}
+      />
     </div>
   );
 }
