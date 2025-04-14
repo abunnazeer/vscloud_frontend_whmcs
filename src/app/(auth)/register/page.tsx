@@ -2,19 +2,24 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
+import { useAuth } from "@/contexts/AuthContext";
 const registerSchema = z
   .object({
     name: z.string().min(2, "Name must be at least 2 characters"),
     email: z.string().email("Please enter a valid email address"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
+        "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+      ),
     confirmPassword: z.string(),
   })
   .refine(data => data.password === data.confirmPassword, {
@@ -25,8 +30,9 @@ const registerSchema = z
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
-  const router = useRouter();
+  // const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const { register: registerUser } = useAuth();
 
   const {
     register,
@@ -39,11 +45,16 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     try {
       setIsLoading(true);
-      // TODO: Implement registration logic here
-      console.log("Register data:", data);
-      router.push("/dashboard");
+      await registerUser(
+        data.name,
+        data.email,
+        data.password,
+        data.confirmPassword
+      );
+      // The redirect is handled in the auth context
     } catch (error) {
       console.error("Registration error:", error);
+      // Error is handled in auth context
     } finally {
       setIsLoading(false);
     }
@@ -96,6 +107,10 @@ export default function RegisterPage() {
             {...register("password")}
             error={errors.password?.message}
           />
+          <p className="text-xs text-gray-500">
+            Must contain at least 8 characters, with uppercase, lowercase,
+            number and special character
+          </p>
         </div>
         <div className="space-y-2">
           <label
@@ -111,8 +126,8 @@ export default function RegisterPage() {
             error={errors.confirmPassword?.message}
           />
         </div>
-        <Button type="submit" className="w-full" loading={isLoading}>
-          Create Account
+        <Button type="submit" className="w-full" disabled={isLoading}>
+          {isLoading ? "Creating Account..." : "Create Account"}
         </Button>
       </form>
       <div className="text-center text-sm">
