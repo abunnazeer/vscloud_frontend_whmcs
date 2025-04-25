@@ -1,7 +1,6 @@
-// src/components/admin/ServerFormModal.tsx
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useState, useEffect } from "react";
 import {
   Dialog,
   DialogPanel,
@@ -17,10 +16,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 const serverSchema = z.object({
   name: z.string().min(1, "Server name is required"),
-  type: z.enum(["cpanel", "plesk", "directadmin"]),
-  url: z.string().url("Must be a valid URL"),
+  hostname: z.string().min(1, "Hostname is required"),
+  ipAddress: z.string().optional(),
+  port: z.number().int().positive("Port must be a positive number"),
   username: z.string().min(1, "Username is required"),
+  location: z.string().min(1, "location is required"),
   password: z.string().min(1, "Password is required"),
+  useSSL: z.boolean().default(true),
+  type: z.enum(["cpanel", "plesk", "DIRECTADMIN"]),
   apiToken: z.string().optional(),
 });
 
@@ -46,12 +49,34 @@ export default function ServerFormModal({
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<ServerFormValues>({
     resolver: zodResolver(serverSchema),
-    defaultValues: server || {
+    defaultValues: {
       type: "cpanel",
+      port: 2222,
+      useSSL: true,
     },
   });
+
+  // Update form when server prop changes
+  useEffect(() => {
+    if (server) {
+      // Set each field value from the server object
+      Object.entries(server).forEach(([key, value]) => {
+        if (key in serverSchema.shape) {
+          setValue(key as any, value);
+        }
+      });
+    } else {
+      // Reset to defaults when adding a new server
+      reset({
+        type: "cpanel",
+        port: 2087,
+        useSSL: true,
+      });
+    }
+  }, [server, setValue, reset]);
 
   const onSubmitForm = async (data: ServerFormValues) => {
     setIsLoading(true);
@@ -122,7 +147,7 @@ export default function ServerFormModal({
                     >
                       <option value="cpanel">cPanel/WHM</option>
                       <option value="plesk">Plesk</option>
-                      <option value="directadmin">DirectAdmin</option>
+                      <option value="DIRECTADMIN">DIRECTADMIN</option>
                     </select>
                     {errors.type?.message && (
                       <p className="mt-1 text-sm text-red-600">
@@ -133,13 +158,60 @@ export default function ServerFormModal({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
-                      Server URL
+                      Hostname
                     </label>
                     <Input
-                      {...register("url")}
-                      placeholder="https://server.example.com:2087"
-                      error={errors.url?.message}
+                      {...register("hostname")}
+                      placeholder="server.example.com"
+                      error={errors.hostname?.message}
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Location
+                    </label>
+                    <Input
+                      {...register("location")}
+                      placeholder="US East"
+                      error={errors.location?.message}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      IP Address (Optional)
+                    </label>
+                    <Input
+                      {...register("ipAddress")}
+                      placeholder="123.456.789.0"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Port
+                      </label>
+                      <Input
+                        type="number"
+                        {...register("port", { valueAsNumber: true })}
+                        defaultValue={2087}
+                        error={errors.port?.message}
+                      />
+                    </div>
+                    <div className="flex items-end">
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          {...register("useSSL")}
+                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">
+                          Use SSL
+                        </span>
+                      </label>
+                    </div>
                   </div>
 
                   <div>
